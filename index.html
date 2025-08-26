@@ -1,0 +1,422 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Wordle - Galaxy Edition</title>
+  <style>
+    :root{
+      --bg1:#040214;
+      --bg2:#08102a;
+      --card:rgba(255,255,255,0.06);
+      --accent:#8a5cff;
+      --accent2:#00e6ff;
+      --correct:#2ecc71;
+      --present:#f1c40f;
+      --absent:#6b6b6b;
+      --cell-gap:8px;
+      --cell-size:min(14vmin,78px);
+      --font-sans:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial;
+      --key-bg: rgba(255,255,255,0.06);
+      --key-active: rgba(255,255,255,0.12);
+    }
+    html,body{
+      height:100%;
+      margin:0;
+      font-family:var(--font-sans);
+      background: radial-gradient(1200px 600px at 10% 20%, rgba(138,92,255,0.08), transparent),
+                  radial-gradient(900px 500px at 90% 80%, rgba(0,230,255,0.04), transparent),
+                  linear-gradient(180deg,var(--bg1),var(--bg2));
+      color:#eaf3ff;
+      -webkit-font-smoothing:antialiased;
+      -moz-osx-font-smoothing:grayscale;
+    }
+    #starfield{
+      position:fixed;
+      inset:0;
+      z-index:0;
+      display:block;
+    }
+    .app{
+      position:relative;
+      z-index:5;
+      min-height:100vh;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      justify-content:flex-start;
+      padding:20px 12px;
+      box-sizing:border-box;
+      gap:14px;
+    }
+    header{text-align:center;margin-top:6px}
+    header h1{margin:0;font-size:clamp(22px,4vmin,38px);letter-spacing:1px;text-shadow:0 0 18px rgba(138,92,255,0.18),0 0 28px rgba(0,230,255,0.06)}
+    header p{margin:6px 0 0;font-size:clamp(14px,2vmin,18px);opacity:0.85}
+    .game{width:100%;max-width:520px;display:flex;flex-direction:column;align-items:center;gap:12px;margin-top:6px}
+    .grid{display:grid;grid-template-columns:repeat(5,var(--cell-size));grid-auto-rows:var(--cell-size);gap:var(--cell-gap);background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));padding:12px;border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.02);justify-content:center}
+    .cell{display:flex;align-items:center;justify-content:center;font-weight:800;font-size:calc(var(--cell-size) * 0.5);user-select:none;text-transform:uppercase;border-radius:8px;background:var(--card);border:2px solid rgba(255,255,255,0.06);box-shadow:0 2px 6px rgba(0,0,0,0.6);color:#eaf3ff;transition:background .18s,border-color .18s,color .18s,transform .08s}
+    .cell.filled{background:rgba(255,255,255,0.04)}
+    .cell.correct{background:var(--correct);border-color:rgba(0,0,0,0.2);color:#06220f}
+    .cell.present{background:var(--present);border-color:rgba(0,0,0,0.2);color:#2b2000}
+    .cell.absent{background:var(--absent);border-color:rgba(0,0,0,0.2);color:#111;opacity:0.95}
+    .controls{width:100%;display:flex;gap:10px;justify-content:center;align-items:center;flex-wrap:wrap}
+    .controls input[type="text"]{padding:12px 14px;border-radius:8px;border:1px solid rgba(255,255,255,0.08);background:rgba(0,0,0,0.25);color:inherit;font-weight:700;text-transform:uppercase;width:220px;max-width:62%;box-sizing:border-box;outline:none;font-size:18px}
+    .controls button{padding:12px 14px;border-radius:8px;border:none;background:linear-gradient(90deg,var(--accent),var(--accent2));color:#00121a;font-weight:800;cursor:pointer;box-shadow:0 6px 18px rgba(138,92,255,0.12);font-size:16px}
+    .controls button:disabled{opacity:0.5;cursor:not-allowed}
+    #message{min-height:1.2em;text-align:center;font-weight:700;font-size:16px;opacity:0.95}
+    .keyboard{width:100%;max-width:520px;display:flex;flex-direction:column;gap:8px;margin-top:8px;align-items:center}
+    .krow{display:flex;gap:6px;justify-content:center;align-items:center;width:100%;box-sizing:border-box;padding:0 6px}
+    .key{padding:8px 10px;background:var(--key-bg);border-radius:8px;cursor:pointer;font-weight:700;font-size:15px;text-transform:uppercase;user-select:none;min-width:34px;text-align:center;box-shadow:0 2px 6px rgba(0,0,0,0.45);transition:transform .06s,background .12s}
+    .key:active{transform:translateY(1px);background:var(--key-active)}
+    .key.wide{padding:8px 14px;min-width:62px;border-radius:10px}
+    .key.correct{background:var(--correct);color:#06220f}
+    .key.present{background:var(--present);color:#2b2000}
+    .key.absent{background:var(--absent);color:#111;opacity:0.95}
+    @media (max-width:520px){
+      .grid{gap:6px;padding:10px}
+      :root{--cell-gap:6px}
+      .controls input[type="text"]{width:150px;max-width:55%}
+      .key{font-size:13px;padding:7px 8px;min-width:30px}
+      .key.wide{min-width:56px}
+    }
+  </style>
+</head>
+<body>
+  <canvas id="starfield"></canvas>
+  <div class="app" role="application" aria-labelledby="title">
+    <header>
+      <h1 id="title">WORDLE - Galaxy Edition</h1>
+      <h3>by Anushka Rakesh</h3>
+      <p>Guess the 5-letter word in 6 tries </p>
+      <p> All the best!!</p>
+    </header>
+    <main class="game" aria-live="polite">
+      <div id="board" class="grid" aria-hidden="false"></div>
+      <div class="controls">
+        <input id="guessInput" type="text" inputmode="text" maxlength="5" autocomplete="off" placeholder="Type 5 letters" aria-label="Type your guess" />
+        <button id="guessBtn" onclick="submitGuess()" aria-label="Submit guess">Guess</button>
+        <button id="newBtn" onclick="startNewGame()" aria-label="Start new game">New Game</button>
+      </div>
+      <div id="message" aria-live="assertive"></div>
+      <div class="keyboard" id="keyboard" aria-hidden="false">
+        <div class="krow" id="row1">
+          <div class="key" data-key="Q">Q</div>
+          <div class="key" data-key="W">W</div>
+          <div class="key" data-key="E">E</div>
+          <div class="key" data-key="R">R</div>
+          <div class="key" data-key="T">T</div>
+          <div class="key" data-key="Y">Y</div>
+          <div class="key" data-key="U">U</div>
+          <div class="key" data-key="I">I</div>
+          <div class="key" data-key="O">O</div>
+          <div class="key" data-key="P">P</div>
+        </div>
+        <div class="krow" id="row2">
+          <div style="flex:0.5"></div>
+          <div class="key" data-key="A">A</div>
+          <div class="key" data-key="S">S</div>
+          <div class="key" data-key="D">D</div>
+          <div class="key" data-key="F">F</div>
+          <div class="key" data-key="G">G</div>
+          <div class="key" data-key="H">H</div>
+          <div class="key" data-key="J">J</div>
+          <div class="key" data-key="K">K</div>
+          <div class="key" data-key="L">L</div>
+          <div style="flex:0.5"></div>
+        </div>
+        <div class="krow" id="row3">
+          <div class="key wide" data-key="Enter">Enter</div>
+          <div class="key" data-key="Z">Z</div>
+          <div class="key" data-key="X">X</div>
+          <div class="key" data-key="C">C</div>
+          <div class="key" data-key="V">V</div>
+          <div class="key" data-key="B">B</div>
+          <div class="key" data-key="N">N</div>
+          <div class="key" data-key="M">M</div>
+          <div class="key wide" data-key="Back">Delete</div>
+        </div>
+      </div>
+    </main>
+  </div>
+  <script>
+    const WORDS = [
+"ABOUT","ABOVE","ACTOR","ACUTE","ADMIT","ADOPT","ADULT","AFTER","AGAIN","AGREE",
+"AHEAD","ALERT","ALIKE","ALIVE","ALLOW","ALONE","ALONG","ALTER","AMBER","AMONG",
+"ANGER","ANGLE","ANGRY","APART","APPLE","APPLY","ARENA","ARGUE","ARISE","ARRAY",
+"ASIDE","ASSET","AUDIO","AVOID","AWARD","AWARE","BADGE","BASIC","BEACH","BEGAN",
+"BEGIN","BEGUN","BEING","BELOW","BENCH","BIRTH","BLACK","BLAME","BLEND","BLOCK",
+"BLOOD","BOARD","BOOST","BOOTH","BOUND","BRAIN","BRAND","BRAVE","BREAD","BREAK",
+"BRIEF","BRING","BROAD","BROKE","BROWN","BUILD","BUILT","CABLE","CALLE","CALM",
+"CANDY","CARRY","CATCH","CAUSE","CHAIN","CHAIR","CHART","CHASE","CHEAP","CHEER",
+"CHIEF","CHILD","CHINA","CHOIR","CHORD","CIVIL","CLAIM","CLASS","CLEAN","CLEAR",
+"CLICK","CLOCK","CLOSE","COACH","COAST","COLOR","COMIC","COUNT","COURT","COVER",
+"CRAFT","CRASH","CRISP","CROSS","CROWD","CROWN","CRUSH","CURVE","CYCLE","DAILY",
+"DANCE","DEALT","DEATH","DEBUT","DELAY","DEPTH","DOUBT","DOZEN","DRAFT","DRAIN",
+"DREAM","DRINK","DRIVE","DROVE","EARLY","EARTH","EASEL","EIGHT","ELDER","ELECT",
+"ELITE","EMPTY","ENACT","ENJOY","ENTER","ENTRY","EQUAL","ERROR","EVENT","EVERY",
+"EXACT","EXIST","EXTRA","FAINT","FAITH","FALSE","FANCY","FAULT","FEAST","FIBER",
+"FIELD","FIGHT","FINAL","FIRST","FIXED","FLAIR","FLAME","FLASH","FLEET","FLOOD",
+"FLOUR","FLUID","FOCUS","FORCE","FORTH","FOUND","FRAME","FRESH","FRONT","FRUIT",
+"FULLY","FUNNY","GAMES","GHOST","GIANT","GIVEN","GLASS","GLOBE","GLOVE","GOALS",
+"GRACE","GRADE","GRAND","GRANT","GRAPE","GRAPH","GRASS","GREAT","GREEN","GROSS",
+"GROUP","GUARD","GUESS","GUEST","GUIDE","HABIT","HAPPY","HEART","HEAVY","HONEY",
+"HORSE","HOTEL","HOUSE","HUMAN","HUMOR","IDEAL","IMAGE","IMPLY","INDEX","INNER",
+"INPUT","ISSUE","IVORY","JOINT","JUDGE","JUICE","KNIFE","KNOWN","LABEL","LADEN",
+"LARGE","LASER","LATER","LAUGH","LAYER","LEAST","LEMON","LEVEL","LIGHT","LIMIT",
+"LOCAL","LOGIC","LOOSE","LOVER","LUCKY","MARCH","MATCH","MAYBE","MELON","MERIT",
+"METAL","MINOR","MINUS","MIXED","MODEL","MONEY","MONTH","MORAL","MOUNT","MOUSE",
+"MOUTH","MOVIE","MUSIC","NAIVE","NERVE","NEVER","NIGHT","NOISE","NORTH","NOVEL",
+"NURSE","OCCUR","OCEAN","OFFER","OFTEN","OLIVE","ONION","ORDER","OTHER","OUTER",
+"OWNER","PAINT","PANEL","PAPER","PARTY","PEACE","PHASE","PHONE","PHOTO","PIANO",
+"PIECE","PILOT","PINCH","PLACE","PLAIN","PLANT","PLATE","PLAZA","PRIDE","PRIME",
+"PRINT","PRIOR","PRIZE","PROOF","PROUD","PROVE","PULSE","QUICK","QUIET","QUILT",
+"QUOTE","RANGE","RAPID","RATIO","REACH","READY","REACT","REALM","REBEL","REFER",
+"RELAX","RENEW","REPLY","RESET","RIDER","RIVAL","RIVER","ROAST","ROBOT","ROUGH",
+"ROUND","ROUTE","ROYAL","RURAL","SCALE","SCENE","SCOPE","SCORE","SENSE","SERVE",
+"SHADE","SHAKE","SHARE","SHARP","SHEEP","SHELF","SHELL","SHIFT","SHINE","SHIRT",
+"SHOCK","SHORE","SHORT","SHOWN","SIGHT","SIGMA","SIGNAL","SILLY","SKILL","SKIRT",
+"SLEEP","SLICE","SLIDE","SMALL","SMART","SMILE","SMOKE","SOLAR","SOLID","SOUND",
+"SOUTH","SPACE","SPARE","SPEAK","SPEED","SPEND","SPENT","SPICE","SPIKE","SPILL",
+"SPINE","SPITE","SPLIT","SPOIL","SPORT","SPOUT","SQUAD","STAFF","STAGE","STAND",
+"START","STATE","STEAM","STEEL","STEPS","STICK","STILL","STOCK","STONE","STORE",
+"STORM","STORY","STRAP","STRAW","STRAY","STUDY","STUFF","STYLE","SUGAR","SUPER",
+"SWEEP","SWEET","SWIFT","SWING","TABLE","TASTE","TEACH","TEAMS","TEARS","TEENS",
+"TEMPO","TENSE","TENTH","THANK","THEIR","THEME","THICK","THINK","THIRD","THOSE",
+"THREE","THROW","TIGER","TIMES","TIRED","TITLE","TODAY","TOKEN","TOPIC","TOTAL",
+"TOUCH","TOUGH","TOWER","TRACE","TRACK","TRADE","TRAIN","TRAIL","TRUST","TRUTH",
+"TWICE","UNCLE","UNDER","UNION","UNITE","UNTIL","UPPER","URBAN","USAGE","VALID",
+"VALUE","VIDEO","VIRUS","VISIT","VITAL","VOICE","VOTER","WASTE","WATCH","WATER",
+"WAVES","WEARY","WEIGH","WHEEL","WHERE","WHILE","WHITE","WHOLE","WIDER","WILDL",
+"WINDY","WOMAN","WOMEN","WORLD","WORST","WORTH","WOULD","WRITE","WRONG","YEARN",
+"YIELD","YOUNG","YOUTH","ZEBRA","ZONED","ZONES","ANGEL","BRICK","BRIDE","BRINK",
+"BROTH","CABLE","CANDY","CARRY","CHAOS","CHILL","CIVIC","CRANE","CREEK","DAILY",
+"DANCE","DRAMA","DREAM","DROVE","ELDER","FAIRY","FAUNA","FIBRE","FLOUR","FOCUS",
+"FRESH","FROST","FUSSY","GLINT","GRAZE","GROVE","HATCH","HILLS","HUMID","ICING",
+"IDEAS","INNER","ISSUE","JAUNT","JELLY","KARMA","LEAFY","LINEN","MANGO","NOBLE",
+"NURSE","OASIS","PAUSE","PEARL","PIVOT","PLUSH","PRISM","RAVEN","RHYME","SCOUT",
+"SHAPE","SLANG","SLICK","SLOPE","SPARK","SPICY","SPINE","SWORE","TANGO","TAPER",
+"THUMP","TRACE","TRAIL","TWEAK","TWIST","UNZIP","VISTA","WALTZ","WOVEN","ZESTY"
+];
+    const WORD_LENGTH = 5;
+    const MAX_ATTEMPTS = 6;
+    let answer = "", attempts = 0, boardCells = [], gameOver = false;
+    const board = document.getElementById("board");
+    function buildBoard(){
+      board.innerHTML = "";
+      boardCells = [];
+      for(let r=0;r<MAX_ATTEMPTS;r++){
+        for(let c=0;c<WORD_LENGTH;c++){
+          const cell = document.createElement("div");
+          cell.className = "cell";
+          cell.setAttribute("data-row", r);
+          cell.setAttribute("data-col", c);
+          board.appendChild(cell);
+          boardCells.push(cell);
+        }
+      }
+    }
+    function startNewGame(){
+      answer = WORDS[Math.floor(Math.random()*WORDS.length)];
+      attempts = 0;
+      gameOver = false;
+      buildBoard();
+      document.getElementById("message").textContent = "";
+      document.getElementById("guessBtn").disabled = false;
+      document.getElementById("guessInput").value = "";
+      document.getElementById("guessInput").focus();
+      const keys = document.querySelectorAll(".key");
+      keys.forEach(k => { k.classList.remove("correct","present","absent"); });
+    }
+    function submitGuess(){
+      if(gameOver) return;
+      const input = document.getElementById("guessInput");
+      let guess = input.value.trim().toUpperCase();
+      const msg = document.getElementById("message");
+      if(guess.length !== WORD_LENGTH){ msg.textContent = "Please enter 5 letters."; input.focus(); return; }
+      if(!/^[A-Z]{5}$/.test(guess)){ msg.textContent = "Use only letters A–Z."; input.focus(); return; }
+      const start = attempts * WORD_LENGTH;
+      for(let i=0;i<WORD_LENGTH;i++){
+        const cell = boardCells[start + i];
+        cell.textContent = guess[i];
+        cell.classList.add("filled");
+      }
+      const answerArr = answer.split("");
+      const guessArr = guess.split("");
+      const result = Array(WORD_LENGTH).fill("absent");
+      for(let i=0;i<WORD_LENGTH;i++){
+        if(guessArr[i] === answerArr[i]){ result[i] = "correct"; answerArr[i] = null; }
+      }
+      for(let i=0;i<WORD_LENGTH;i++){
+        if(result[i] === "correct") continue;
+        const idx = answerArr.indexOf(guessArr[i]);
+        if(idx !== -1){ result[i] = "present"; answerArr[idx] = null; }
+      }
+      for(let i=0;i<WORD_LENGTH;i++){
+        const cell = boardCells[start + i];
+        setTimeout(()=>cell.classList.add(result[i]), i*120);
+      }
+      updateKeyboardColors(guessArr, result);
+      attempts++;
+      setTimeout(()=> {
+        if(guess === answer){
+          msg.textContent = "You guessed it! Answer: " + answer;
+          gameOver = true;
+          document.getElementById("guessBtn").disabled = true;
+        } else if(attempts >= MAX_ATTEMPTS){
+          msg.textContent = "Better luck next time! The word was " + answer;
+          gameOver = true;
+          document.getElementById("guessBtn").disabled = true;
+        } else {
+          msg.textContent = "Attempts: " + attempts + " / " + MAX_ATTEMPTS;
+          document.getElementById("guessInput").value = "";
+          document.getElementById("guessInput").focus();
+        }
+      }, WORD_LENGTH * 120 + 140);
+    }
+    function updateKeyboardColors(guessArr, resultArr){
+      for(let i=0;i<guessArr.length;i++){
+        const letter = guessArr[i];
+        const res = resultArr[i];
+        const key = document.querySelector(`.key[data-key="${letter}"]`);
+        if(!key) continue;
+        if(key.classList.contains("correct")) continue;
+        if(res === "correct"){ key.classList.remove("present","absent"); key.classList.add("correct"); }
+        else if(res === "present"){ if(!key.classList.contains("correct")){ key.classList.remove("absent"); key.classList.add("present"); } }
+        else { if(!key.classList.contains("correct") && !key.classList.contains("present")){ key.classList.add("absent"); } }
+      }
+    }
+    document.getElementById("guessInput").addEventListener("input", e => {
+      e.target.value = e.target.value.replace(/[^a-zA-Z]/g,"").toUpperCase().slice(0,WORD_LENGTH);
+    });
+   document.getElementById("guessInput").addEventListener("keydown", e => {
+  if (e.key === "Enter") {
+    e.preventDefault(); t
+    submitGuess();
+  }
+});
+  const keyboard = document.getElementById("keyboard");
+    keyboard.addEventListener("click", e => {
+      const k = e.target.closest(".key");
+      if(!k) return;
+      const kval = k.getAttribute("data-key");
+      const input = document.getElementById("guessInput");
+      if(kval === "Enter"){ submitGuess(); return; }
+      if(kval === "Back"){ input.value = input.value.slice(0, -1); input.focus(); return; }
+      if(input.value.length < WORD_LENGTH){ input.value += kval; input.focus(); }
+    });
+document.addEventListener("keydown", e => {
+  const input = document.getElementById("guessInput");
+
+  // Ignore if typing inside the input field (browser already handles)
+  if (document.activeElement === input) {
+    if (e.key === "Enter") submitGuess();
+    return;
+  }
+
+  // Physical keyboard control outside the input field
+  if (e.key.length === 1 && /^[a-zA-Z]$/.test(e.key)) {
+    if (input.value.length < WORD_LENGTH) input.value += e.key.toUpperCase();
+  } else if (e.key === "Backspace") {
+    input.value = input.value.slice(0, -1);
+  } else if (e.key === "Enter") {
+    submitGuess();
+  }
+});
+
+    startNewGame();
+    (function starfield(){
+      const canvas = document.getElementById("starfield");
+      const ctx = canvas.getContext("2d");
+      let w,h,stars,lastTime=0;
+      function resize(){
+        const dpr = window.devicePixelRatio || 1;
+        w = canvas.width = Math.floor(window.innerWidth * dpr);
+        h = canvas.height = Math.floor(window.innerHeight * dpr);
+        canvas.style.width = window.innerWidth + "px";
+        canvas.style.height = window.innerHeight + "px";
+        ctx.setTransform(dpr,0,0,dpr,0,0);
+        initStars();
+      }
+      function rnd(min,max){ return Math.random()*(max-min)+min; }
+      function initStars(){
+        const count = Math.floor((window.innerWidth * window.innerHeight) / 9000);
+        stars = [];
+        for(let i=0;i<count;i++){
+          stars.push({
+            x: Math.random() * window.innerWidth,
+            y: Math.random() * window.innerHeight,
+            size: Math.random()*1.6 + 0.3,
+            speed: Math.random()*0.4 + 0.05,
+            twinkle: Math.random()*1.2,
+            hue: rnd(180,280)
+          });
+        }
+      }
+      function render(t){
+        const dt = Math.min(60, t - lastTime) / 16.666;
+        lastTime = t;
+        ctx.clearRect(0,0,canvas.width,canvas.height);
+        const g = ctx.createRadialGradient(w*0.2, h*0.15, 0, w*0.2, h*0.15, Math.max(w,h)*0.7);
+        g.addColorStop(0, "rgba(138,92,255,0.06)");
+        g.addColorStop(1, "rgba(138,92,255,0)");
+        ctx.fillStyle = g;
+        ctx.fillRect(0,0,window.innerWidth, window.innerHeight);
+        const g2 = ctx.createRadialGradient(w*0.85, h*0.8, 0, w*0.85, h*0.8, Math.max(w,h)*0.6);
+        g2.addColorStop(0, "rgba(0,230,255,0.04)");
+        g2.addColorStop(1, "rgba(0,230,255,0)");
+        ctx.fillStyle = g2;
+        ctx.fillRect(0,0,window.innerWidth, window.innerHeight);
+        for(let s of stars){
+          s.x -= s.speed * dt * 30;
+          s.y += Math.sin((t/1000) + s.twinkle) * 0.2;
+          if(s.x < -10) s.x = window.innerWidth + 10;
+          const alpha = 0.6 + Math.sin((t/300) * (0.5 + s.twinkle)) * 0.4;
+          ctx.beginPath();
+          ctx.fillStyle = "rgba(255,255,255," + (Math.min(1,alpha)) + ")";
+          ctx.arc(s.x, s.y, s.size, 0, Math.PI*2);
+          ctx.fill();
+        }
+        if(Math.random() < 0.006) createComet();
+        if(window._comets){
+          for(let i = window._comets.length-1; i>=0; i--){
+            const c = window._comets[i];
+            ctx.save();
+            ctx.globalAlpha = c.a;
+            ctx.beginPath();
+            ctx.moveTo(c.x, c.y);
+            ctx.lineTo(c.x + c.vx*6, c.y + c.vy*6);
+            ctx.strokeStyle = "rgba(255,255,255,0.5)";
+            ctx.lineWidth = c.w;
+            ctx.stroke();
+            ctx.restore();
+            c.x += c.vx * dt * 40;
+            c.y += c.vy * dt * 40;
+            c.a *= 0.995;
+            if(c.a < 0.02) window._comets.splice(i,1);
+          }
+        }
+        requestAnimationFrame(render);
+      }
+      function createComet(){
+        window._comets = window._comets || [];
+        const startX = Math.random() * window.innerWidth;
+        const startY = -10;
+        const angle = Math.PI/6 + Math.random()*Math.PI/4;
+        window._comets.push({
+          x: startX,
+          y: startY,
+          vx: Math.cos(angle) * (0.6 + Math.random()*1.2),
+          vy: Math.sin(angle) * (0.6 + Math.random()*1.2),
+          a: 0.9,
+          w: 1 + Math.random()*2
+        });
+      }
+      window.addEventListener("resize", resize);
+      resize();
+      requestAnimationFrame(render);
+    })();
+    window.addEventListener("load", ()=>{ document.getElementById("guessInput").focus(); });
+  </script>
+</body>
+</html>
