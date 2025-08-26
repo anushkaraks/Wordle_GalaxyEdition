@@ -6,81 +6,110 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Wordle - Galaxy Edition</title>
   <style>
-    :root{
-      --bg1:#040214;
-      --bg2:#08102a;
-      --card:rgba(255,255,255,0.06);
-      --accent:#8a5cff;
-      --accent2:#00e6ff;
-      --correct:#2ecc71;
-      --present:#f1c40f;
-      --absent:#6b6b6b;
-      --cell-gap:8px;
-      --cell-size:min(14vmin,78px);
-      --font-sans:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial;
-      --key-bg: rgba(255,255,255,0.06);
-      --key-active: rgba(255,255,255,0.12);
+  :root{
+    --bg1:#040214;
+    --bg2:#08102a;
+    --card:rgba(255,255,255,0.06);
+    --accent:#8a5cff;
+    --accent2:#00e6ff;
+    --correct:#2ecc71;
+    --present:#f1c40f;
+    --absent:#6b6b6b;
+    --cell-gap:8px;
+    --cell-size:min(14vmin,78px);
+    --font-sans:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial;
+    --key-bg: rgba(255,255,255,0.06);
+    --key-active: rgba(255,255,255,0.12);
+  }
+  html,body{
+    height:100%;
+    margin:0;
+    font-family:var(--font-sans);
+    background: radial-gradient(1200px 600px at 10% 20%, rgba(138,92,255,0.08), transparent),
+                radial-gradient(900px 500px at 90% 80%, rgba(0,230,255,0.04), transparent),
+                linear-gradient(180deg,var(--bg1),var(--bg2));
+    color:#eaf3ff;
+    -webkit-font-smoothing:antialiased;
+    -moz-osx-font-smoothing:grayscale;
+  }
+  /* --- Existing styles (unchanged) --- */
+  #starfield{ position:fixed; inset:0; z-index:0; display:block; }
+  .app{ position:relative; z-index:5; min-height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:flex-start; padding:20px 12px; box-sizing:border-box; gap:14px; }
+  header{text-align:center;margin-top:6px}
+  header h1{margin:0;font-size:clamp(22px,4vmin,38px);letter-spacing:1px;text-shadow:0 0 18px rgba(138,92,255,0.18),0 0 28px rgba(0,230,255,0.06)}
+  header p{margin:6px 0 0;font-size:clamp(14px,2vmin,18px);opacity:0.85}
+  .game{width:100%;max-width:520px;display:flex;flex-direction:column;align-items:center;gap:12px;margin-top:6px}
+  .grid{display:grid;grid-template-columns:repeat(5,var(--cell-size));grid-auto-rows:var(--cell-size);gap:var(--cell-gap);background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));padding:12px;border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.02);justify-content:center}
+  .cell{display:flex;align-items:center;justify-content:center;font-weight:800;font-size:calc(var(--cell-size) * 0.5);user-select:none;text-transform:uppercase;border-radius:8px;background:var(--card);border:2px solid rgba(255,255,255,0.06);box-shadow:0 2px 6px rgba(0,0,0,0.6);color:#eaf3ff;transition:background .18s,border-color .18s,color .18s,transform .08s}
+  .cell.filled{background:rgba(255,255,255,0.04)}
+  .cell.correct{background:var(--correct);border-color:rgba(0,0,0,0.2);color:#06220f}
+  .cell.present{background:var(--present);border-color:rgba(0,0,0,0.2);color:#2b2000}
+  .cell.absent{background:var(--absent);border-color:rgba(0,0,0,0.2);color:#111;opacity:0.95}
+  .controls{width:100%;display:flex;gap:10px;justify-content:center;align-items:center;flex-wrap:wrap}
+  .controls input[type="text"]{padding:12px 14px;border-radius:8px;border:1px solid rgba(255,255,255,0.08);background:rgba(0,0,0,0.25);color:inherit;font-weight:700;text-transform:uppercase;width:220px;max-width:62%;box-sizing:border-box;outline:none;font-size:18px}
+  .controls button{padding:12px 14px;border-radius:8px;border:none;background:linear-gradient(90deg,var(--accent),var(--accent2));color:#00121a;font-weight:800;cursor:pointer;box-shadow:0 6px 18px rgba(138,92,255,0.12);font-size:16px}
+  .controls button:disabled{opacity:0.5;cursor:not-allowed}
+  #message{min-height:1.2em;text-align:center;font-weight:700;font-size:16px;opacity:0.95}
+  .keyboard{width:100%;max-width:520px;display:flex;flex-direction:column;gap:8px;margin-top:8px;align-items:center}
+  .krow{display:flex;gap:6px;justify-content:center;align-items:center;width:100%;box-sizing:border-box;padding:0 6px}
+  .key{padding:8px 10px;background:var(--key-bg);border-radius:8px;cursor:pointer;font-weight:700;font-size:15px;text-transform:uppercase;user-select:none;min-width:34px;text-align:center;box-shadow:0 2px 6px rgba(0,0,0,0.45);transition:transform .06s,background .12s}
+  .key:active{transform:translateY(1px);background:var(--key-active)}
+  .key.wide{padding:8px 14px;min-width:62px;border-radius:10px}
+  .key.correct{background:var(--correct);color:#06220f}
+  .key.present{background:var(--present);color:#2b2000}
+  .key.absent{background:var(--absent);color:#111;opacity:0.95}
+  
+  /* Responsive Adjustments */
+  @media (max-width:520px){
+    .grid{gap:6px;padding:10px}
+    :root{--cell-gap:6px}
+    .controls input[type="text"]{width:150px;max-width:55%}
+    .key{font-size:13px;padding:7px 8px;min-width:30px}
+    .key.wide{min-width:56px}
+  }
+
+  @media (max-width:400px) {
+    :root {
+      --cell-size: min(16vw, 60px);
+      --cell-gap: 5px;
     }
-    html,body{
-      height:100%;
-      margin:0;
-      font-family:var(--font-sans);
-      background: radial-gradient(1200px 600px at 10% 20%, rgba(138,92,255,0.08), transparent),
-                  radial-gradient(900px 500px at 90% 80%, rgba(0,230,255,0.04), transparent),
-                  linear-gradient(180deg,var(--bg1),var(--bg2));
-      color:#eaf3ff;
-      -webkit-font-smoothing:antialiased;
-      -moz-osx-font-smoothing:grayscale;
+    header h1 {
+      font-size: clamp(18px, 6vw, 28px);
     }
-    #starfield{
-      position:fixed;
-      inset:0;
-      z-index:0;
-      display:block;
+    .controls input[type="text"] {
+      width: 130px;
+      font-size: 16px;
+      padding: 10px;
     }
-    .app{
-      position:relative;
-      z-index:5;
-      min-height:100vh;
-      display:flex;
-      flex-direction:column;
-      align-items:center;
-      justify-content:flex-start;
-      padding:20px 12px;
-      box-sizing:border-box;
-      gap:14px;
+    .controls button {
+      font-size: 14px;
+      padding: 10px 12px;
     }
-    header{text-align:center;margin-top:6px}
-    header h1{margin:0;font-size:clamp(22px,4vmin,38px);letter-spacing:1px;text-shadow:0 0 18px rgba(138,92,255,0.18),0 0 28px rgba(0,230,255,0.06)}
-    header p{margin:6px 0 0;font-size:clamp(14px,2vmin,18px);opacity:0.85}
-    .game{width:100%;max-width:520px;display:flex;flex-direction:column;align-items:center;gap:12px;margin-top:6px}
-    .grid{display:grid;grid-template-columns:repeat(5,var(--cell-size));grid-auto-rows:var(--cell-size);gap:var(--cell-gap);background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));padding:12px;border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.02);justify-content:center}
-    .cell{display:flex;align-items:center;justify-content:center;font-weight:800;font-size:calc(var(--cell-size) * 0.5);user-select:none;text-transform:uppercase;border-radius:8px;background:var(--card);border:2px solid rgba(255,255,255,0.06);box-shadow:0 2px 6px rgba(0,0,0,0.6);color:#eaf3ff;transition:background .18s,border-color .18s,color .18s,transform .08s}
-    .cell.filled{background:rgba(255,255,255,0.04)}
-    .cell.correct{background:var(--correct);border-color:rgba(0,0,0,0.2);color:#06220f}
-    .cell.present{background:var(--present);border-color:rgba(0,0,0,0.2);color:#2b2000}
-    .cell.absent{background:var(--absent);border-color:rgba(0,0,0,0.2);color:#111;opacity:0.95}
-    .controls{width:100%;display:flex;gap:10px;justify-content:center;align-items:center;flex-wrap:wrap}
-    .controls input[type="text"]{padding:12px 14px;border-radius:8px;border:1px solid rgba(255,255,255,0.08);background:rgba(0,0,0,0.25);color:inherit;font-weight:700;text-transform:uppercase;width:220px;max-width:62%;box-sizing:border-box;outline:none;font-size:18px}
-    .controls button{padding:12px 14px;border-radius:8px;border:none;background:linear-gradient(90deg,var(--accent),var(--accent2));color:#00121a;font-weight:800;cursor:pointer;box-shadow:0 6px 18px rgba(138,92,255,0.12);font-size:16px}
-    .controls button:disabled{opacity:0.5;cursor:not-allowed}
-    #message{min-height:1.2em;text-align:center;font-weight:700;font-size:16px;opacity:0.95}
-    .keyboard{width:100%;max-width:520px;display:flex;flex-direction:column;gap:8px;margin-top:8px;align-items:center}
-    .krow{display:flex;gap:6px;justify-content:center;align-items:center;width:100%;box-sizing:border-box;padding:0 6px}
-    .key{padding:8px 10px;background:var(--key-bg);border-radius:8px;cursor:pointer;font-weight:700;font-size:15px;text-transform:uppercase;user-select:none;min-width:34px;text-align:center;box-shadow:0 2px 6px rgba(0,0,0,0.45);transition:transform .06s,background .12s}
-    .key:active{transform:translateY(1px);background:var(--key-active)}
-    .key.wide{padding:8px 14px;min-width:62px;border-radius:10px}
-    .key.correct{background:var(--correct);color:#06220f}
-    .key.present{background:var(--present);color:#2b2000}
-    .key.absent{background:var(--absent);color:#111;opacity:0.95}
-    @media (max-width:520px){
-      .grid{gap:6px;padding:10px}
-      :root{--cell-gap:6px}
-      .controls input[type="text"]{width:150px;max-width:55%}
-      .key{font-size:13px;padding:7px 8px;min-width:30px}
-      .key.wide{min-width:56px}
+    .key {
+      font-size: 12px;
+      min-width: 26px;
+      padding: 6px 7px;
     }
-  </style>
+  }
+
+  @media (max-width:320px) {
+    :root {
+      --cell-size: min(18vw, 50px);
+    }
+    header p {
+      font-size: 12px;
+    }
+    .controls {
+      flex-direction: column;
+      gap: 6px;
+    }
+    .controls input[type="text"], .controls button {
+      width: 90%;
+      max-width: none;
+    }
+  }
+</style>
+
 </head>
 <body>
   <canvas id="starfield"></canvas>
@@ -420,3 +449,4 @@ document.addEventListener("keydown", e => {
   </script>
 </body>
 </html>
+
