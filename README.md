@@ -39,4 +39,4 @@ Try to guess the word in the fewest attempts!
 # 🌐 Play Online
 
 You can also play the game online:
-Play Wordle: Galaxy Edition
+https://anushkaraks.github.io/Wordle_GalaxyEdition/ 
