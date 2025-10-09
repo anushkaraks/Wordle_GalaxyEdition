@@ -2,7 +2,7 @@
 
 Wordle: Galaxy Edition is a space-themed twist on the popular Wordle game, built using HTML, CSS, and JavaScript. Test your word-guessing skills while exploring a galaxy of letters!
 
-# 🌟 Features
+# Features
 
 Classic Wordle gameplay with a galactic theme
 
@@ -14,13 +14,13 @@ Score tracking and statistics
 
 Responsive and visually appealing interface
 
-# 🛠 Tech Stack
+# Tech Stack
 
 Languages: HTML, CSS, JavaScript
 
 Browser: Any modern web browser
 
-# 🚀 How to Play
+# How to Play
 
 Open index.html in your browser.
 
@@ -36,7 +36,7 @@ Gray: Letter not in the word
 
 Try to guess the word in the fewest attempts!
 
-# 🌐 Play Online
+# Play Online
 
 You can also play the game online:
 https://anushkaraks.github.io/Wordle_GalaxyEdition/ 
